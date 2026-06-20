@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>NEON VOID | Galactic Survival</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Rajdhani:wght@300;500;700&display=swap" rel="stylesheet">
+    <style>
+        @keyframes notifFade {
+            0% { opacity: 0; transform: translateY(20px); }
+            20% { opacity: 1; transform: translateY(0); }
+            80% { opacity: 1; transform: translateY(0); }
+            100% { opacity: 0; transform: translateY(-20px); }
+        }
+    </style>
+</head>
+<body>
+    <div id="game-container">
+        <canvas id="gameCanvas" style="filter: contrast(1.1) brightness(1.1) drop-shadow(0 0 5px rgba(0, 242, 255, 0.2));"></canvas>
+
+        <!-- HUD -->
+        <div id="hud" class="hidden">
+            <div class="hud-top">
+                <div class="stat-box">
+                    <span class="label">SCORE</span>
+                    <span id="score-value">0</span>
+                </div>
+                <div class="xp-bar-container">
+                    <div id="xp-bar-fill"></div>
+                    <div class="xp-text">LVL <span id="level-value">1</span></div>
+                </div>
+                <div class="stat-box">
+                    <span class="label">WAVE</span>
+                    <span id="wave-value">1</span>
+                </div>
+            </div>
+            <div class="hud-bottom">
+                <div class="health-bar-container">
+                    <div id="health-bar-fill"></div>
+                </div>
+                <div id="combo-container" class="hidden">
+                    <span id="combo-multiplier">x1</span>
+                    <span class="combo-label">COMBO</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Main Menu -->
+        <div id="main-menu" class="overlay">
+            <div class="menu-content">
+                <h1 class="game-title">NEON<span class="highlight">VOID</span></h1>
+                <p class="tagline">Survive the neon onslaught</p>
+                <div class="menu-buttons">
+                    <button id="start-btn" class="btn-primary">START MISSION</button>
+                    <button id="upgrades-btn" class="btn-secondary">PERMANENT UPGRADES</button>
+                    <button id="settings-btn" class="btn-secondary">SETTINGS</button>
+                </div>
+                <div class="footer">
+                    <p>Use WASD/Arrows to move. Space to Dash. Aim with mouse. Mobile: Joypad.</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Upgrade Menu -->
+        <div id="upgrade-menu" class="overlay hidden">
+            <div class="upgrade-content">
+                <h2>SYSTEM UPGRADE AVAILABLE</h2>
+                <p>Choose a module to integrate:</p>
+                <div id="upgrade-options" class="upgrade-grid">
+                    <!-- Upgrades injected here -->
+                </div>
+            </div>
+        </div>
+
+        <!-- Pause Menu -->
+        <div id="pause-menu" class="overlay hidden">
+            <div class="pause-content">
+                <h2>PAUSED</h2>
+                <div class="menu-buttons">
+                    <button id="resume-btn" class="btn-primary">RESUME</button>
+                    <button id="restart-btn" class="btn-secondary">RESTART</button>
+                    <button id="quit-btn" class="btn-secondary">QUIT TO MENU</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Game Over Screen -->
+        <div id="game-over" class="overlay hidden">
+            <div class="game-over-content">
+                <h2 class="death-text">CONNECTION LOST</h2>
+                <div class="final-stats">
+                    <div class="stat">
+                        <span class="label">FINAL SCORE</span>
+                        <span id="final-score">0</span>
+                    </div>
+                    <div class="stat">
+                        <span class="label">WAVES SURVIVED</span>
+                        <span id="final-waves">0</span>
+                    </div>
+                    <div class="stat">
+                        <span class="label">MAX LEVEL</span>
+                        <span id="final-level">0</span>
+                    </div>
+                </div>
+                <div class="menu-buttons">
+                    <button id="retry-btn" class="btn-primary">REBOOT SYSTEM</button>
+                    <button id="menu-btn" class="btn-secondary">MAIN MENU</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Settings Menu -->
+        <div id="settings-menu" class="overlay hidden">
+            <div class="settings-content">
+                <h2>SYSTEM SETTINGS</h2>
+                <div class="setting-item">
+                    <label>MASTER VOLUME</label>
+                    <input type="range" id="volume-slider" min="0" max="1" step="0.1" value="0.5">
+                </div>
+                <div class="setting-item">
+                    <label>SFX VOLUME</label>
+                    <input type="range" id="sfx-slider" min="0" max="1" step="0.1" value="0.7">
+                </div>
+                <div class="setting-item">
+                    <label>MUSIC VOLUME</label>
+                    <input type="range" id="music-slider" min="0" max="1" step="0.1" value="0.4">
+                </div>
+                <div class="menu-buttons">
+                    <button id="close-settings-btn" class="btn-primary">SAVE & CLOSE</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Meta-Upgrades Menu -->
+        <div id="meta-upgrades-menu" class="overlay hidden">
+            <div class="meta-content">
+                <h2>STATION UPGRADES</h2>
+                <p>Use salvaged data to enhance your core</p>
+                <div class="currency-display">
+                    DATA SCRAPS: <span id="meta-currency">0</span>
+                </div>
+                <div id="meta-upgrade-list" class="meta-grid">
+                    <!-- Meta upgrades injected here -->
+                </div>
+                <div class="menu-buttons">
+                    <button id="close-meta-btn" class="btn-primary">RETURN TO HANGAR</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Mobile Controls -->
+        <div id="mobile-controls" class="hidden">
+            <div id="joystick-container">
+                <div id="joystick-base">
+                    <div id="joystick-stick"></div>
+                </div>
+            </div>
+            <div id="fire-button"></div>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script src="audio.js"></script>
+    <script src="entities.js"></script>
+    <script src="systems.js"></script>
+    <script src="ui.js"></script>
+    <script src="game.js"></script>
+</body>
+</html>
