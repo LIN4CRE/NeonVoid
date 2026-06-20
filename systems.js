@@ -92,10 +92,15 @@ const Systems = {
     },
 
     resolvePlayerCollision(enemy, player, game) {
-        if (player.isDashing) return;
+        if (player.isDashing || player.invulnerabilityTimer > 0) return;
+        
         if (player.takeDamage(enemy.damage * 0.1)) {
             game.gameOver();
+        } else {
+            // Trigger Mini Nuke when a life is lost
+            player.triggerMiniNuke(game);
         }
+        
         const angle = Math.atan2(player.y - enemy.y, player.x - enemy.x);
         player.x += Math.cos(angle) * 30;
         player.y += Math.sin(angle) * 30;
@@ -112,8 +117,11 @@ const Systems = {
         } else if (powerUp.type === 'shield') {
             player.tempShield = 10.0;
             game.ui.notify('SHIELD ACTIVATED!', '#00f2ff');
+        } else if (powerUp.type === 'life') {
+            player.lives = Math.min(player.maxLives, player.lives + 1);
+            game.ui.notify('EXTRA LIFE GAINED!', '#39ff14');
         }
-        powerUp.markedForDeletion = true;
+        powerUp,markedForDeletion = true;
     },
 
     hitEnemy(bullet, enemy, game) {

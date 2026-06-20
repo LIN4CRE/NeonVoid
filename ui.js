@@ -126,9 +126,10 @@ class UIController {
         this.hud.level.innerText = p.level;
         this.hud.wave.innerText = this.game.wave;
         this.hud.xpFill.style.width = `${(p.xp / p.xpNextLevel) * 100}%`;
-        const healthPct = Math.max(0, (p.health / p.maxHealth) * 100);
-        this.hud.healthFill.style.width = `${healthPct}%`;
-        this.hud.healthText.innerText = `${Math.ceil(p.health)} / ${p.maxHealth}`;
+        
+        // Updated to show Lives instead of HP bar
+        this.hud.healthFill.style.width = `${(p.lives / p.maxLives) * 100}%`;
+        this.hud.healthText.innerText = `LIVES: ${p.lives} / ${p.maxLives}`;
 
         if (this.game.combo > 1) {
             this.hud.comboCont.classList.remove('hidden');

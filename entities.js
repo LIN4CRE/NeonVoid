@@ -22,12 +22,12 @@ class Player extends Entity {
     constructor(x, y) {
         super(x, y, 15, '#00f2ff');
         this.speed = 250;
-        this.maxHealth = 100;
-        this.health = 100;
+        this.lives = 1;
+        this.maxLives = 5;
         this.level = 1;
         this.xp = 0;
         this.xpNextLevel = 100;
-
+        
         this.fireRate = 0.3;
         this.fireTimer = 0;
         this.bulletDamage = 10;
@@ -41,7 +41,7 @@ class Player extends Entity {
         this.orbitals = 0;
         this.orbitalDamage = 15;
         this.orbitalRadius = 100;
-
+        
         this.dashCooldown = 2.0;
         this.dashTimer = 0;
         this.dashDuration = 0.15;
@@ -63,6 +63,8 @@ class Player extends Entity {
         this.pulseActive = 0;
         this.pulseDuration = 0.3;
 
+        this.invulnerabilityTimer = 0;
+
         this.pickedUpgrades = [];
         this.synergies = [];
 
@@ -70,10 +72,8 @@ class Player extends Entity {
     }
 
     update(dt, input, game) {
-        if (this.health < this.maxHealth) {
-            let currentRegen = this.regen;
-            if (this.synergies.includes('HYPER_Sustain')) currentRegen *= 2;
-            this.health = Math.min(this.maxHealth, this.health + currentRegen * dt);
+        if (this.invulnerabilityTimer > 0) {
+            this.invulnerabilityTimer -= dt;
         }
 
         if (this.tempOverdrive > 0) this.tempOverdrive -= dt;
@@ -157,6 +157,24 @@ class Player extends Entity {
         }
     }
 
+    triggerMiniNuke(game) {
+        audio.playExplosion('large');
+        game.shake = 30;
+        game.createExplosion(this.x, this.y, '#fff');
+        
+        const enemies = game.entities.filter(e => e instanceof Enemy);
+        enemies.forEach(e => {
+            const dist = Math.sqrt((e.x - this.x) ** 2 + (e.y - this.y) ** 2);
+            if (dist < 300) {
+                e.takeDamage(this.bulletDamage * 10);
+                const angle = Math.atan2(e.y - this.y, e.x - this.x);
+                e.x += Math.cos(angle) * 150;
+                e.y += Math.sin(angle) * 150;
+                game.createExplosion(e.x, e.y, e.color);
+            }
+        });
+    }
+
     shoot(game) {
         const angle = Math.atan2(game.input.mouseY - this.y, game.input.mouseX - this.x);
         for (let i = 0; i < this.projCount; i++) {
@@ -207,6 +225,7 @@ class Player extends Entity {
         ctx.lineTo(-this.radius, -this.radius);
         ctx.lineTo(-this.radius * 0.5, -this.radius * 0.3);
         ctx.lineTo(-this.radius * 0.5, this.radius * 0.3);
+        ctx.lineTo(-this.radius, this.//Slight modification to finish the ship geometry
         ctx.lineTo(-this.radius, this.radius);
         ctx.closePath();
 
@@ -215,7 +234,7 @@ class Player extends Entity {
         } else if (this.tempOverdrive > 0) {
             ctx.fillStyle = '#ff00ff';
         } else {
-            ctx.fillStyle = this.color;
+            ctx.fillStyle = this.invulnerabilityTimer > 0 ? 'rgba(0, 242, 255, 0.5)' : this.color;
         }
         ctx.fill();
 
@@ -223,16 +242,21 @@ class Player extends Entity {
     }
 
     takeDamage(amount) {
+        if (this.invulnerabilityTimer > 0) return false;
+
         this.damageFlash = 0.1;
         if (this.tempShield > 0) {
             this.tempShield -= amount * 0.5;
             return false;
         }
-        this.health -= amount;
-        if (this.health <= 0) {
-            this.health = 0;
-            return true;
+        
+        this.lives--;
+        if (this.lives <= 0) {
+            return true; // Game Over
         }
+        
+        // Trigger life loss effect
+        this.invulnerabilityTimer = 3.0;
         return false;
     }
 
@@ -607,7 +631,7 @@ class Orbital extends Entity {
         ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
         ctx.fillStyle = this.color;
         ctx.fill();
-        ctx.restore();
+        ctx,restore();
     }
 }
 
@@ -659,7 +683,8 @@ class PowerUp extends Entity {
     constructor(x, y, type) {
         const configs = {
             overdrive: { color: '#ff00ff', label: 'O' },
-            shield: { color: '#00f2ff', label: 'S' }
+            shield: { color: '#00f2ff', label: 'S' },
+            life: { color: '#39ff14', label: 'L' }
         };
         super(x, y, 12, configs[type].color);
         this.type = type;
