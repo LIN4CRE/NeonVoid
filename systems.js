@@ -3,13 +3,25 @@ const Systems = {
         const entities = game.entities;
         const player = game.player;
 
-        const enemies = entities.filter(e => e instanceof Enemy);
-        const bullets = entities.filter(e => e instanceof Bullet);
-        const orbitals = entities.filter(e => e instanceof Orbital);
-        const asteroids = entities.filter(e => e instanceof Asteroid);
-        const powerUps = entities.filter(e => e instanceof PowerUp);
-        const blackHoles = entities.filter(e => e instanceof BlackHole);
+        // Optimized entity pre-filtering
+        const enemies = [];
+        const bullets = [];
+        const orbitals = [];
+        const asteroids = [];
+        const powerUps = [];
+        const blackHoles = [];
 
+        for (let i = 0; i < entities.length; i++) {
+            const e = entities[i];
+            if (e instanceof Enemy) enemies.push(e);
+            else if (e instanceof Bullet) bullets.push(e);
+            else if (e instanceof Orbital) orbitals.push(e);
+            else if (e instanceof Asteroid) asteroids.push(e);
+            else if (e instanceof PowerUp) powerUps.push(e);
+            else if (e instanceof BlackHole) blackHoles.push(e);
+        }
+
+        // Bullet vs Enemy
         for (const bullet of bullets) {
             if (bullet.markedForDeletion) continue;
             for (const enemy of enemies) {
@@ -36,6 +48,7 @@ const Systems = {
             }
         }
 
+        // Orbital vs Enemy
         for (const orbital of orbitals) {
             for (const enemy of enemies) {
                 if (enemy.markedForDeletion) continue;
@@ -48,6 +61,7 @@ const Systems = {
             }
         }
 
+        // Player vs Entities
         for (const entity of entities) {
             if (entity.markedForDeletion) continue;
             const dx = entity.x - player.x;

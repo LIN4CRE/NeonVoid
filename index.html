@@ -3,21 +3,33 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <meta name="description" content="NEON VOID - A high-octane, rogue-lite space survival game. Fight waves of enemies, salvage data, and upgrade your ship.">
-    <meta name="theme-color" content="#05050a">
-    <meta property="og:title" content="NEON VOID | Galactic Survival">
-    <meta property="og:description" content="Survive the neon onslaught in this rogue-lite space shooter.">
-    <meta property="og:type" content="website">
     <title>NEON VOID | Galactic Survival</title>
-    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🚀</text></svg>">
     <link rel="stylesheet" href="style.css">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Rajdhani:wght@300;500;700&display=swap" rel="stylesheet">
+    <style>
+        @keyframes notifFade {
+            0% { opacity: 0; transform: translateY(20px); }
+            20% { opacity: 1; transform: translateY(0); }
+            80% { opacity: 1; transform: translateY(0); }
+            100% { opacity: 0; transform: translateY(-20px); }
+        }
+        #damage-flash {
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+            pointer-events: none;
+            z-index: 5;
+            opacity: 0;
+            transition: opacity 0.1s;
+        }
+        #damage-flash.active { opacity: 1; }
+    </style>
 </head>
 <body>
     <div id="game-container">
-        <canvas id="gameCanvas"></canvas>
+        <div id="damage-flash"></div>
+        <canvas id="gameCanvas" style="filter: contrast(1.1) brightness(1.1) drop-shadow(0 0 5px rgba(0, 242, 255, 0.2));"></canvas>
 
         <!-- HUD -->
         <div id="hud" class="hidden">
@@ -35,30 +47,42 @@
                     <span id="wave-value">1</span>
                 </div>
             </div>
-            <div id="ability-hud">
-                <div id="dash-cd" class="ability-icon" style="border-color:var(--neon-pink);color:var(--neon-pink);" title="Dash (Space)">D</div>
-                <div id="chronos-cd" class="ability-icon" style="border-color:var(--neon-yellow);color:var(--neon-yellow);" title="Chronos Field (E)">C</div>
-                <div id="pulse-cd" class="ability-icon" style="border-color:var(--neon-blue);color:var(--neon-blue);" title="Void Pulse (Q)">P</div>
-            </div>
-            <div class="hud-bottom">
-                <div style="display:flex;flex-direction:column;align-items:center;gap:4px;">
-                    <div class="health-bar-container">
-                        <div id="health-bar-fill"></div>
-                    </div>
-                    <span id="health-text" class="health-text"></span>
+            
+            <!-- Boss HUD -->
+            <div id="boss-hud" class="hidden" style="position: absolute; top: 80px; left: 50%; transform: translateX(-50%); width: 60%; text-align: center;">
+                <div id="boss-name" style="font-family: 'Orbitron'; color: #ff00ff; text-shadow: 0 0 10px #ff00ff; margin-bottom: 5px;">BOSS</div>
+                <div class="health-bar-container" style="width: 100%; height: 10px;">
+                    <div id="boss-bar-fill" style="height: 100%; width: 100%; background: linear-gradient(90deg, #ff00ff, #ff8888); box-shadow: 0 0 10px #ff00ff;"></div>
                 </div>
+            </div>
+
+            <div class="hud-bottom">
+                <div class="health-bar-container">
+                    <div id="health-bar-fill"></div>
+                    <div id="health-text" style="position: absolute; width: 100%; text-align: center; top: 0; font-family: 'Orbitron'; font-size: 0.7rem; color: #fff; line-height: 12px;">100/100</div>
+                </div>
+                
+                <!-- Ability Cooldowns -->
+                <div id="ability-container" style="display: flex; gap: 10px;">
+                    <div id="dash-cd" class="ability-icon" style="width: 40px; height: 40px; border: 2px solid var(--neon-pink); border-radius: 5px; position: relative; overflow: hidden; background: rgba(0,0,0,0.5);">
+                        <div style="position: absolute; bottom: 0; left: 0; width: 100%; background: var(--neon-pink); opacity: 0.5; height: var(--cd-pct, 0%); transition: height 0.1s linear;"></div>
+                        <span style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); color: #fff; font-size: 0.6rem; font-family: 'Orbitron';">DASH</span>
+                    </div>
+                    <div id="chronos-cd" class="ability-icon" style="width: 40px; height: 40px; border: 2px solid var(--neon-yellow); border-radius: 5px; position: relative; overflow: hidden; background: rgba(0,0,0,0.5);">
+                        <div style, a custom style here: position: absolute; bottom: 0; left: 0; width: 100%; background: var(--neon-yellow); opacity: 0.5; height: var(--cd-pct, 0%); transition: height 0.1s linear;"></div>
+                        <span style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); color: #fff; font-size: 0.6rem; font-family: 'Orbitron';">TIME</span>
+                    </div>
+                    <div id="pulse-cd" class="ability-icon" style="width: 40px; height: 40px; border: 2px solid var(--neon-pink); border-radius: 5px; position: relative; overflow: hidden; background: rgba(0,0,0,0.5);">
+                        <div style="position: absolute; bottom: 0; left: 0; width: 100%; background: var(--neon-pink); opacity: 0.5; height: var(--cd-pct, 0%); transition: height 0.1s linear;"></div>
+                        <span style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); color: #fff; font-size: 0.6rem; font-family: 'Orbitron';">PULSE</span>
+                    </div>
+                </div>
+
                 <div id="combo-container" class="hidden">
                     <span id="combo-multiplier">x1</span>
                     <span class="combo-label">COMBO</span>
                 </div>
             </div>
-            <div id="boss-hud" class="hidden">
-                <span class="label" id="boss-name">BOSS</span>
-                <div class="boss-bar-container">
-                    <div id="boss-bar-fill"></div>
-                </div>
-            </div>
-            <div id="damage-flash"></div>
         </div>
 
         <!-- Main Menu -->
@@ -71,9 +95,8 @@
                     <button id="upgrades-btn" class="btn-secondary">PERMANENT UPGRADES</button>
                     <button id="settings-btn" class="btn-secondary">SETTINGS</button>
                 </div>
-                <div class="controls-hint">
-                    <p>WASD/Arrows: Move &nbsp;|&nbsp; Mouse: Aim &nbsp;|&nbsp; Space: Dash &nbsp;|&nbsp; E: Chronos &nbsp;|&nbsp; Q: Void Pulse &nbsp;|&nbsp; Esc: Pause</p>
-                    <p class="mobile-hint">📱 Mobile: Touch controls supported</p>
+                <div class="footer">
+                    <p>Use WASD/Arrows to move. Q/E for Abilities. Space to Dash. Mobile: Joypad.</p>
                 </div>
             </div>
         </div>
@@ -117,7 +140,7 @@
                         <span id="final-level">0</span>
                     </div>
                 </div>
-                <div id="scraps-earned" class="currency-display" style="margin-bottom:2rem;"></div>
+                <div id="scraps-earned" style="text-align: center; margin-bottom: 20px; font-family: 'Orbitron'; color: #39ff14;"></div>
                 <div class="menu-buttons">
                     <button id="retry-btn" class="btn-primary">REBOOT SYSTEM</button>
                     <button id="menu-btn" class="btn-secondary">MAIN MENU</button>
@@ -142,7 +165,7 @@
                     <input type="range" id="music-slider" min="0" max="1" step="0.1" value="0.4">
                 </div>
                 <div class="menu-buttons">
-                    <button id="close-settings-btn" class="btn-primary">SAVE &amp; CLOSE</button>
+                    <button id="close-settings-btn" class="btn-primary">SAVE & CLOSE</button>
                 </div>
             </div>
         </div>

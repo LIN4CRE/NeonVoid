@@ -43,9 +43,10 @@ class Game {
         window.addEventListener('keyup', (e) => this.input.keys[e.code] = false);
         window.addEventListener('mousemove', (e) => {
             const rect = this.canvas.getBoundingClientRect();
-            this.input.mouseX = (e.clientX - rect.left) * (this.canvas.width / rect.width);
-            this.input.mouseY = (e.clientY - rect.top) * (this.canvas.height / rect.height);
+            this.input.mouseX = e.clientX - rect.left;
+            this.input.mouseY = e.clientY - rect.top;
         });
+
         window.addEventListener('keydown', (e) => {
             if (e.code === 'Escape') {
                 if (!this.running && this.paused) return;
