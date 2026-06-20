@@ -1,6 +1,6 @@
 /**
  * Entities
- * Defines all game objects: Player, Enemies, Bullets, Particles, Orbitals, DamageNumbers, Asteroids, PowerUps.
+ * Defines all game objects: Player, Enemies, Bullets, Particles, Orbitals, DamageNumbers, Asteroids, PowerUps, Hazards.
  */
 
 class Entity {
@@ -58,6 +58,12 @@ class Player extends Entity {
         // Temp Power-ups
         this.tempOverdrive = 0;
         this.tempShield = 0;
+
+        // v2.0 Systems: Active Abilities
+        this.chronosCooldown = 10.0;
+        this.chronosTimer = 0;
+        this.chronosActive = 0;
+        this.chronosDuration = 3.0;
     }
 
     update(dt, input, game) {
@@ -76,6 +82,11 @@ class Player extends Entity {
             this.isDashing = false;
         }
 
+        this.chronosTimer -= dt;
+        if (this.chronosActive > 0) {
+            this.chronosActive -= dt;
+        }
+
         let dx = 0, dy = 0;
         if (input.keys['KeyW'] || input.keys['ArrowUp']) dy -= 1;
         if (input.keys['KeyS'] || input.keys['ArrowDown']) dy += 1;
@@ -83,11 +94,21 @@ class Player extends Entity {
         if (input.keys['KeyD'] || input.keys['ArrowRight']) dx += 1;
         if (input.joystick) { dx = input.joystick.x; dy = input.joystick.y; }
 
+        // Dash
         if ((input.keys['Space'] || input.keys['ShiftLeft']) && this.dashTimer <= 0) {
             this.dashActive = this.dashDuration;
             this.dashTimer = this.dashCooldown;
             audio.playLaser('heavy');
             game.createExplosion(this.x, this.y, this.color);
+        }
+
+        // Chronos Field (Active Ability) - Triggered by 'E'
+        if (input.keys['KeyE'] && this.chronosTimer <= 0) {
+            this.chronosActive = this.chronosDuration;
+            this.chronosTimer = this.chronosCooldown;
+            audio.playPowerUp();
+            game.ui.notify('CHRONOS FIELD ACTIVE', '#ffff00');
+            game.createExplosion(this.x, this.y, '#ffff00');
         }
 
         if (dx !== 0 || dy !== 0) {
@@ -129,6 +150,14 @@ class Player extends Entity {
             ctx.arc(0, 0, this.radius * 2, 0, Math.PI * 2);
             ctx.strokeStyle = '#00f2ff';
             ctx.lineWidth = 2;
+            ctx.stroke();
+        }
+
+        if (this.chronosActive > 0) {
+            ctx.beginPath();
+            ctx.arc(0, 0, this.radius * 3, 0, Math.PI * 2);
+            ctx.strokeStyle = 'rgba(255, 255, 0, 0.3)';
+            ctx.lineWidth = 3;
             ctx.stroke();
         }
 
@@ -183,8 +212,9 @@ class Bullet extends Entity {
     }
 
     update(dt, game) {
-        this.x += this.vx * dt;
-        this.y += this.vy * dt;
+        const timeScale = game.player.chronosActive > 0 ? 0.3 : 1.0;
+        this.x += this.vx * dt * timeScale;
+        this.y += this.vy * dt * timeScale;
         this.life -= dt;
         if (this.singularity) {
             const enemies = game.entities.filter(e => e instanceof Enemy);
@@ -195,8 +225,8 @@ class Bullet extends Entity {
                 if (distSq < 40000) {
                     const dist = Math.sqrt(distSq);
                     const force = 60 / (dist + 1);
-                    enemy.x += (dx / dist) * force * dt * -1;
-                    enemy.y += (dy / dist) * force * dt * -1;
+                    enemy.x += (dx / dist) * force * dt * -1 * timeScale;
+                    enemy.y += (dy / dist) * force * dt * -1 * timeScale;
                 }
             }
         }
@@ -226,7 +256,10 @@ class Enemy extends Entity {
             splitter: { radius: 18, color: '#39ff14', health: 50, speed: 80, damage: 10, xp: 30, score: 40, shield: 0 },
             charger: { radius: 12, color: '#00ffff', health: 25, speed: 200, damage: 20, xp: 20, score: 20, shield: 0 },
             vortex: { radius: 20, color: '#8800ff', health: 60, speed: 70, damage: 10, xp: 30, score: 40, shield: 0 },
-            mirage: { radius: 15, color: '#ffffff', health: 30, speed: 110, damage: 15, xp: 30, score: 40, shield: 0 }
+            mirage: { radius: 15, color: '#ffffff', health: 30, speed: 110, damage: 15, xp: 30, score: 40, shield: 0 },
+            hive: { radius: 40, color: '#ffaa00', health: 300, speed: 40, damage: 10, xp: 100, score: 200, shield: 100 },
+            siphoner: { radius: 15, color: '#00ffaa', health: 40, speed: 100, damage: 5, xp: 30, score: 40, shield: 0 },
+            shifter: { radius: 15, color: '#aa00ff', health: 40, speed: 120, damage: 15, xp: 30, score: 40, shield: 0 }
         };
         
         const config = configs[type];
@@ -242,9 +275,11 @@ class Enemy extends Entity {
         this.fireTimer = 0;
         this.fireRate = type === 'shooter' ? 2.0 : 0;
         this.teleportTimer = 0;
+        this.spawnTimer = 0;
     }
 
     update(dt, game) {
+        const timeScale = game.player.chronosActive > 0 ? 0.3 : 1.0;
         const dx = game.player.x - this.x;
         const dy = game.player.y - this.y;
         const dist = Math.sqrt(dx * dx + dy * dy);
@@ -257,21 +292,37 @@ class Enemy extends Entity {
             }
         }
 
-        if (this.type === 'mirage') {
-            this.teleportTimer -= dt;
+        if (this.type === 'mirage' || this.type === 'shifter') {
+            this.teleportTimer -= dt * timeScale;
             if (this.teleportTimer <= 0) {
                 this.x += (Math.random() - 0.5) * 200;
                 this.y += (Math.random() - 0.5) * 200;
                 this.teleportTimer = 3 + Math.random() * 2;
-                game.createExplosion(this.x, this.y, '#fff');
+                game.createExplosion(this.x, this.y, this.color);
             }
         }
 
-        this.x += (dx / dist) * this.speed * dt;
-        this.y += (dy / dist) * this.speed * dt;
+        if (this.type === 'hive') {
+            this.spawnTimer -= dt * timeScale;
+            if (this.spawnTimer <= 0) {
+                game.entities.push(new Enemy(this.x, this.y, 'swarmer', game.wave));
+                this.spawnTimer = 3.0;
+            }
+        }
+
+        if (this.type === 'siphoner') {
+            if (dist < 100) {
+                // Siphoner steals health
+                game.player.takeDamage(5 * dt);
+                this.health = Math.min(this.maxHealth, this.health + 10 * dt);
+            }
+        }
+
+        this.x += (dx / dist) * this.speed * dt * timeScale;
+        this.y += (dy / dist) * this.speed * dt * timeScale;
 
         if (this.type === 'shooter') {
-            this.fireTimer -= dt;
+            this.fireTimer -= dt * timeScale;
             if (this.fireTimer <= 0 && dist < 450) {
                 const angle = Math.atan2(dy, dx);
                 game.entities.push(new Bullet(this.x, this.y, angle, 350, this.damage, 4, this.color, 1, false));
@@ -301,7 +352,7 @@ class Enemy extends Entity {
             ctx.stroke();
         }
         ctx.beginPath();
-        if (this.type === 'tank') ctx.rect(this.x - this.radius, this.y - this.radius, this.radius * 2, this.radius * 2);
+        if (this.type === 'tank' || this.type === 'hive') ctx.rect(this.x - this.radius, this.y - this.radius, this.radius * 2, this.radius * 2);
         else if (this.type === 'shooter') {
             ctx.moveTo(this.x, this.y - this.radius);
             ctx.lineTo(this.x + this.radius, this.y + this.radius);
@@ -335,15 +386,16 @@ class Boss extends Enemy {
     }
 
     update(dt, game) {
+        const timeScale = game.player.chronosActive > 0 ? 0.3 : 1.0;
         const dx = game.player.x - this.x;
         const dy = game.player.y - this.y;
         const dist = Math.sqrt(dx * dx + dy * dy);
         
-        this.x += (dx / dist) * this.speed * dt;
-        this.y += (dy / dist) * this.speed * dt;
+        this.x += (dx / dist) * this.speed * dt * timeScale;
+        this.y += (dy / dist) * this.speed * dt * timeScale;
         
-        this.phaseTimer += dt;
-        this.attackCooldown -= dt;
+        this.phaseTimer += dt * timeScale;
+        this.attackCooldown -= dt * timeScale;
         if (this.phaseTimer > 6) {
             this.phase = (this.phase + 1) % 4;
             this.phaseTimer = 0;
@@ -378,8 +430,6 @@ class Boss extends Enemy {
                 game.entities.push(new Bullet(this.x, this.y, a, 300, 12, 5, this.color, 1, false));
             }
         } else { // Vortex Pull
-            const enemies = game.entities.filter(e => e instanceof Enemy); // Not needed but for logic
-            // Pull player towards boss
             game.player.x += (dx / dist) * 50;
             game.player.y += (dy / dist) * 50;
             game.createExplosion(this.x, this.y, this.color);
@@ -420,7 +470,8 @@ class Orbital extends Entity {
     }
 
     update(dt, game) {
-        this.angle += this.orbitSpeed * dt;
+        const timeScale = game.player.chronosActive > 0 ? 0.3 : 1.0;
+        this.angle += this.orbitSpeed * dt * timeScale;
         this.x = this.player.x + Math.cos(this.angle) * this.player.orbitalRadius;
         this.y = this.player.y + Math.sin(this.angle) * this.player.orbitalRadius;
     }
@@ -449,8 +500,9 @@ class Asteroid extends Entity {
     }
 
     update(dt, game) {
-        this.x += this.vx * dt;
-        this.y += this.vy * dt;
+        const timeScale = game.player.chronosActive > 0 ? 0.3 : 1.0;
+        this.x += this.vx * dt * timeScale;
+        this.y += this.vy * dt * timeScale;
         if (this.x < -100 || this.x > game.width + 100 || this.y < -100 || this.y > game.height + 100) {
             this.markedForDeletion = true;
         }
@@ -589,6 +641,48 @@ class Nebula extends Entity {
         ctx.fillStyle = this.color;
         ctx.globalAlpha = this.opacity;
         ctx.fill();
+        ctx.restore();
+    }
+}
+
+class BlackHole extends Entity {
+    constructor(x, y, radius) {
+        super(x, y, radius, '#000');
+        this.pullStrength = 150;
+        this.life = 15.0;
+        this.maxLife = 15.0;
+    }
+
+    update(dt, game) {
+        this.life -= dt;
+        if (this.life <= 0) this.markedForDeletion = true;
+
+        // Pull everything
+        const entities = game.entities.filter(e => e instanceof Enemy || e instanceof Player || e instanceof Asteroid);
+        for (const e of entities) {
+            const dx = this.x - e.x;
+            const dy = this.y - e.y;
+            const distSq = dx * dx + dy * dy;
+            const dist = Math.sqrt(distSq);
+            if (dist < 500) {
+                const force = this.pullStrength / (dist + 1);
+                e.x += (dx / dist) * force * dt;
+                e.y += (dy / dist) * force * dt;
+            }
+        }
+    }
+
+    draw(ctx) {
+        ctx.save();
+        ctx.shadowBlur = 20;
+        ctx.shadowColor = '#ff00ff';
+        ctx.beginPath();
+        ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
+        ctx.fillStyle = '#000';
+        ctx.fill();
+        ctx.strokeStyle = '#ff00ff';
+        ctx.lineWidth = 3;
+        ctx.stroke();
         ctx.restore();
     }
 }

@@ -13,6 +13,7 @@ const Systems = {
         const orbitals = entities.filter(e => e instanceof Orbital);
         const asteroids = entities.filter(e => e instanceof Asteroid);
         const powerUps = entities.filter(e => e instanceof PowerUp);
+        const blackHoles = entities.filter(e => e instanceof BlackHole);
 
         // Bullet vs Enemy
         for (const bullet of bullets) {
@@ -73,6 +74,13 @@ const Systems = {
                     }
                 } else if (entity instanceof PowerUp) {
                     this.applyPowerUp(entity, player, game);
+                } else if (entity instanceof BlackHole) {
+                    // Black holes destroy the player if they touch the event horizon
+                    if (!player.isDashing) {
+                        player.takeDamage(50);
+                        game.shake = 30;
+                        audio.playExplosion('large');
+                    }
                 }
             }
         }
@@ -130,8 +138,6 @@ const Systems = {
                 }
                 game.createExplosion(enemy.x, enemy.y, enemy.color);
                 audio.playExplosion(enemy instanceof Boss ? 'large' : 'small');
-                
-                // Chance to drop powerup
                 if (Math.random() < 0.1) {
                     const type = Math.random() < 0.5 ? 'overdrive' : 'shield';
                     game.entities.push(new PowerUp(enemy.x, enemy.y, type));
@@ -162,6 +168,7 @@ const UPGRADES = [
     { id: 'dash_cd', name: 'Phase Shift', desc: 'Reduce dash cooldown by 15%', effect: (p) => p.dashCooldown *= 0.85 },
     { id: 'regen', name: 'Bio-Link', desc: 'Regenerate 1 HP per second', effect: (p) => p.regen += 1 },
     { id: 'black_hole', name: 'Singularity Shot', desc: 'Bullets pull enemies slightly', effect: (p) => p.hasSingularity = true },
+    { id: 'chronos', name: 'Chronos Field', desc: 'Active: Slow time for 3s (Press E)', effect: (p) => p.chronosCooldown *= 0.9 },
 ];
 
 const META_UPGRADES = [

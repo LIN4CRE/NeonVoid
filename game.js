@@ -26,6 +26,7 @@ class Game {
         
         this.spawnTimer = 0;
         this.asteroidTimer = 0;
+        this.hazardTimer = 0;
         this.enemiesInWave = 0;
         this.waveMaxEnemies = 10;
         this.isBossWave = false;
@@ -197,6 +198,9 @@ class Game {
         if (this.wave > 8 && r < 0.8) type = 'charger';
         if (this.wave > 12 && r < 0.3) type = 'vortex';
         if (this.wave > 15 && r < 0.4) type = 'mirage';
+        if (this.wave > 18 && r < 0.3) type = 'hive';
+        if (this.wave > 20 && r < 0.3) type = 'siphoner';
+        if (this.wave > 22 && r < 0.3) type = 'shifter';
 
         this.entities.push(new Enemy(x, y, type, this.wave));
         this.enemiesInWave++;
@@ -213,8 +217,13 @@ class Game {
         this.entities.push(new Asteroid(x, y, radius));
     }
 
+    spawnBlackHole() {
+        this.entities.push(new BlackHole(Math.random() * this.width, Math.random() * this.height, 40));
+        this.ui.notify('GRAVITATIONAL ANOMALY DETECTED', '#ff00ff');
+    }
+
     spawnBoss() {
-        const names = ['VOID REAPER', 'NEON TITAN', 'CYBER CORE', 'THE SINGULARITY'];
+        const names = ['VOID REAPER', 'NEON TITAN', 'CYBER CORE', 'THE SINGULARITY', 'AETHER LORD'];
         const name = names[Math.floor(this.wave / 10) % names.length];
         this.entities.push(new Boss(this.width / 2, -100, this.wave, name));
         this.ui.notify(`WARNING: ${name} DETECTED`, '#ff00ff');
@@ -251,6 +260,12 @@ class Game {
         if (this.asteroidTimer <= 0) {
             this.spawnAsteroid();
             this.asteroidTimer = Math.max(2, 5 - (this.wave * 0.1));
+        }
+
+        this.hazardTimer -= dt;
+        if (this.hazardTimer <= 0 && this.wave > 5) {
+            this.spawnBlackHole();
+            this.hazardTimer = Math.max(15, 30 - (this.wave * 0.5));
         }
 
         if (this.enemiesInWave >= this.waveMaxEnemies && this.entities.filter(e => e instanceof Enemy && !(e instanceof Boss)).length === 0 && !this.isBossWave) {
