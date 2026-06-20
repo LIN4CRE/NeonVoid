@@ -459,10 +459,10 @@ input[type="range"] {
 
 #joystick-container {
     position: absolute;
-    bottom: 50px;
-    left: 50px;
-    width: 150px;
-    height: 150px;
+    bottom: 40px;
+    left: 40px;
+    width: 140px;
+    height: 140px;
     pointer-events: auto;
 }
 
@@ -481,22 +481,65 @@ input[type="range"] {
     background: var(--neon-blue);
     border-radius: 50%;
     position: absolute;
-    top: 45px;
-    left: 45px;
+    top: 40px;
+    left: 40px;
     box-shadow: 0 0 15px var(--neon-blue);
 }
 
-#fire-button {
+#mobile-actions {
     position: absolute;
-    bottom: 60px;
-    right: 60px;
-    width: 80px;
-    height: 80px;
-    background: rgba(255, 0, 204, 0.3);
-    border: 3px solid var(--neon-pink);
-    border-radius: 50%;
+    bottom: 40px;
+    right: 40px;
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 15px;
     pointer-events: auto;
-    box-shadow: 0 0 15px var(--neon-pink);
+}
+
+.action-btn {
+    width: 70px;
+    height: 70px;
+    border-radius: 50%;
+    border: 2px solid #fff;
+    font-family: 'Orbitron', sans-serif;
+    font-weight: 700;
+    font-size: 0.7rem;
+    color: #fff;
+    cursor: pointer;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    background: rgba(0, 0, 0, 0.5);
+    transition: transform 0.1s, box-shadow 0.1s;
+    user-select: none;
+    -webkit-user-select: none;
+}
+
+.action-btn:active {
+    transform: scale(0.9);
+}
+
+.dash-btn {
+    border-color: var(--neon-pink);
+    box-shadow: 0 0 10px var(--neon-pink);
+    color: var(--neon-pink);
+}
+
+.chronos-btn {
+    border-color: var(--neon-yellow);
+    box-shadow: 0 0 10px var(--neon-yellow);
+    color: var(--neon-yellow);
+}
+
+.pause-btn {
+    grid-column: span 2;
+    width: 150px;
+    height: 40px;
+    border-radius: 20px;
+    border-color: var(--neon-blue);
+    box-shadow: 0 0 10px var(--neon-blue);
+    color: var(--neon-blue);
+    margin: 0 auto;
 }
 
 .hidden {

@@ -66,6 +66,9 @@ class Game {
         const controls = document.getElementById('mobile-controls');
         const joystickBase = document.getElementById('joystick-base');
         const joystickStick = document.getElementById('joystick-stick');
+        const dashBtn = document.getElementById('mobile-dash-btn');
+        const chronosBtn = document.getElementById('mobile-chronos-btn');
+        const pauseBtn = document.getElementById('mobile-pause-btn');
 
         const handleTouch = () => {
             if (window.innerWidth < 1024) controls.classList.remove('hidden');
@@ -101,6 +104,25 @@ class Game {
             isJoystickActive = false;
             joystickStick.style.transform = `translate(0,0)`;
             this.input.joystick = null;
+        });
+
+        dashBtn.addEventListener('touchstart', (e) => {
+            e.preventDefault();
+            this.input.keys['Space'] = true;
+            setTimeout(() => this.input.keys['Space'] = false, 100);
+        });
+
+        chronosBtn.addEventListener('touchstart', (e) => {
+            e.preventDefault();
+            this.input.keys['KeyE'] = true;
+            setTimeout(() => this.input.keys['KeyE'] = false, 100);
+        });
+
+        pauseBtn.addEventListener('touchstart', (e) => {
+            e.preventDefault();
+            this.paused = !this.paused;
+            if (this.paused) this.ui.showMenu('pause');
+            else this.ui.resumeGame();
         });
     }
 
