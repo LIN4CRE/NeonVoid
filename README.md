@@ -1,5 +1,7 @@
 # 🌌 NEON VOID | Galactic Survival
 
+![Banner](banner.png)
+
 ![Version](https://img.shields.io/badge/version-1.0.0-blueviolet)
 ![Platform](https://img.shields.io/badge/platform-Browser-lightgrey)
 ![License](https://img.shields.io/badge/license-MIT-green)
@@ -7,6 +9,10 @@
 **NEON VOID** is a high-octane, rogue-lite space survival game. Navigate through a neon-infused void, fight off waves of galactic entities, salvage data scraps, and upgrade your ship to become the ultimate survivor.
 
 Experience a blend of strategic build-crafting and twitch-reflex combat in a stunning retro-futuristic aesthetic.
+
+## 🚀 Key Features
+... (keep existing features)
+
 
 ## 🚀 Key Features
 
