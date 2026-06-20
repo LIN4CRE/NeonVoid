@@ -63,7 +63,12 @@ class Player extends Entity {
         this.chronosActive = 0;
         this.chronosDuration = 3.0;
 
-        // v2.0 Synergies
+        this.pulseCooldown = 5.0;
+        this.pulseTimer = 0;
+        this.pulseActive = 0;
+        this.pulseDuration = 0.3;
+
+        this.pickedUpgrades = [];
         this.synergies = [];
     }
 
@@ -90,6 +95,11 @@ class Player extends Entity {
             this.chronosActive -= dt;
         }
 
+        this.pulseTimer -= dt;
+        if (this.pulseActive > 0) {
+            this.pulseActive -= dt;
+        }
+
         let dx = 0, dy = 0;
         if (input.keys['KeyW'] || input.keys['ArrowUp']) dy -= 1;
         if (input.keys['KeyS'] || input.keys['ArrowDown']) dy += 1;
@@ -110,6 +120,26 @@ class Player extends Entity {
             audio.playPowerUp();
             game.ui.notify('CHRONOS FIELD ACTIVE', '#ffff00');
             game.createExplosion(this.x, this.y, '#ffff00');
+        }
+
+        if (input.keys['KeyQ'] && this.pulseTimer <= 0) {
+            this.pulseActive = this.pulseDuration;
+            this.pulseTimer = this.pulseCooldown;
+            audio.playExplosion('small');
+            game.ui.notify('VOID PULSE!', '#ff00ff');
+            
+            // Apply damage to nearby enemies
+            const enemies = game.entities.filter(e => e instanceof Enemy);
+            enemies.forEach(e => {
+                const dist = Math.sqrt((e.x - this.x)**2 + (e.y - this.y)**2);
+                if (dist < 200) {
+                    e.takeDamage(this.bulletDamage * 3);
+                    const angle = Math.atan2(e.y - this.y, e.x - this.x);
+                    e.x += Math.cos(angle) * 100;
+                    e.y += Math.sin(angle) * 100;
+                    game.createExplosion(e.x, e.y, e.color);
+                }
+            });
         }
 
         if (dx !== 0 || dy !== 0) {
@@ -135,10 +165,7 @@ class Player extends Entity {
         for (let i = 0; i < this.projCount; i++) {
             const spread = this.projSpread * (i - (this.projCount - 1) / 2);
             const finalAngle = angle + spread;
-            
-            // Synergy: Hyper Vortex
             const singularityEffect = this.hasSingularity || this.synergies.includes('HYPER_VORTEX');
-            
             game.entities.push(new Bullet(this.x, this.y, finalAngle, this.bulletSpeed, this.bulletDamage, this.bulletRadius, this.color, this.pierce, true, singularityEffect));
         }
         audio.playLaser(this.tempOverdrive > 0 ? 'heavy' : 'standard');
@@ -166,16 +193,28 @@ class Player extends Entity {
             ctx.stroke();
         }
 
+        if (this.pulseActive > 0) {
+            ctx.beginPath();
+            ctx.arc(0, 0, (1 - this.pulseActive/this.pulseDuration) * 200, 0, Math.PI * 2);
+            ctx.strokeStyle = '#ff00ff';
+            ctx.lineWidth = 4;
+            ctx.stroke();
+        }
+
         ctx.shadowBlur = this.isDashing ? 30 : 15;
         ctx.shadowColor = this.color;
+        
+        // Detailed Ship Geometry
         ctx.beginPath();
-        ctx.moveTo(this.radius * 1.5, 0);
+        ctx.moveTo(this.radius * 1.8, 0);
         ctx.lineTo(-this.radius, -this.radius);
-        ctx.lineTo(-this.radius * 0.5, 0);
+        ctx.lineTo(-this.radius * 0.5, -this.radius * 0.3);
+        ctx.lineTo(-this.radius * 0.5, this.radius * 0.3);
         ctx.lineTo(-this.radius, this.radius);
         ctx.closePath();
         ctx.fillStyle = this.tempOverdrive > 0 ? '#ff00ff' : this.color;
         ctx.fill();
+        
         ctx.restore();
     }
 
@@ -281,6 +320,7 @@ class Enemy extends Entity {
         this.fireRate = type === 'shooter' ? 2.0 : 0;
         this.teleportTimer = 0;
         this.spawnTimer = 0;
+        this.rotation = Math.random() * Math.PI * 2;
     }
 
     update(dt, game) {
@@ -289,6 +329,8 @@ class Enemy extends Entity {
         const dy = game.player.y - this.y;
         const dist = Math.sqrt(dx * dx + dy * dy);
         
+        this.rotation += dt * 2;
+
         if (this.type === 'vortex') {
             if (dist < 200) {
                 const force = 100 / (dist + 1);
@@ -346,24 +388,29 @@ class Enemy extends Entity {
 
     draw(ctx) {
         ctx.save();
+        ctx.translate(this.x, this.y);
+        ctx.rotate(this.rotation);
         ctx.shadowBlur = 10;
         ctx.shadowColor = this.color;
+        
         if (this.shield > 0) {
             ctx.beginPath();
-            ctx.arc(this.x, this.y, this.radius + 5, 0, Math.PI * 2);
+            ctx.arc(0, 0, this.radius + 5, 0, Math.PI * 2);
             ctx.strokeStyle = '#00f2ff';
             ctx.lineWidth = 2;
             ctx.stroke();
         }
+        
         ctx.beginPath();
-        if (this.type === 'tank' || this.type === 'hive') ctx.rect(this.x - this.radius, this.y - this.radius, this.radius * 2, this.radius * 2);
-        else if (this.type === 'shooter') {
-            ctx.moveTo(this.x, this.y - this.radius);
-            ctx.lineTo(this.x + this.radius, this.y + this.radius);
-            ctx.lineTo(this.x - this.radius, this.y + this.radius);
+        if (this.type === 'tank' || this.type === 'hive') {
+            ctx.rect(-this.radius, -this.radius, this.radius * 2, this.radius * 2);
+        } else if (this.type === 'shooter') {
+            ctx.moveTo(0, -this.radius);
+            ctx.lineTo(this.radius, this.radius);
+            ctx.lineTo(-this.radius, this.radius);
             ctx.closePath();
         } else {
-            ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
+            ctx.arc(0, 0, this.radius, 0, Math.PI * 2);
         }
         ctx.fillStyle = this.color;
         ctx.fill();

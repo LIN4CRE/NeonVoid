@@ -110,7 +110,6 @@ const Systems = {
     hitEnemy(bullet, enemy, game) {
         let damage = bullet.damage;
         
-        // Synergy: Hyper Scythe (Pierce + Spread)
         if (game.player.synergies.includes('HYPER_Scythe') && bullet.pierce > 1) {
             damage *= 1.3;
         }
@@ -149,16 +148,6 @@ const Systems = {
                 game.createParticle(bullet.x, bullet.y, enemy.color, 2);
             }
         }
-    },
-
-    checkSynergies(player, game) {
-        const currentUpgrades = UPGRADES.map(u => u.id);
-        const playerUpgrades = [];
-        
-        // Determine which upgrades player actually has
-        // This requires tracking which upgrades were picked. 
-        // I'll assume the player object is updated via the effects.
-        // To accurately track synergies, I need to store the picked IDs.
     }
 };
 
@@ -167,20 +156,21 @@ function playerGainXp(game, amount) {
 }
 
 const UPGRADES = [
-    { id: 'fire_rate', name: 'Overclocked Cores', desc: 'Attack speed +15%', effect: (p) => p.fireRate *= 0.85 },
-    { id: 'damage', name: 'Plasma Surge', desc: 'Bullet damage +20%', effect: (p) => p.bulletDamage *= 1.2 },
-    { id: 'proj_count', name: 'Multi-Shot', desc: 'Add an additional projectile', effect: (p) => p.projCount += 1 },
-    { id: 'proj_spread', name: 'Wide Angle', desc: 'Increase projectile spread', effect: (p) => p.projSpread += 0.12 },
-    { id: 'speed', name: 'Warp Drive', desc: 'Movement speed +10%', effect: (p) => p.speed *= 1.1 },
-    { id: 'pierce', name: 'Phase Rounds', desc: 'Bullets pierce +1 enemy', effect: (p) => p.pierce += 1 },
-    { id: 'crit_chance', name: 'Precision Targeting', desc: 'Crit chance +5%', effect: (p) => p.critChance += 0.05 },
-    { id: 'crit_mult', name: 'High-Impact Slugs', desc: 'Crit multiplier +0.5x', effect: (p) => p.critMult += 0.5 },
-    { id: 'max_health', name: 'Nano-Armor', desc: 'Max health +20% & full heal', effect: (p) => { p.maxHealth *= 1.2; p.health = p.maxHealth; } },
-    { id: 'orbitals', name: 'Sentry Drones', desc: 'Deploy an orbiting defense drone', effect: (p) => p.orbitals += 1 },
-    { id: 'dash_cd', name: 'Phase Shift', desc: 'Reduce dash cooldown by 15%', effect: (p) => p.dashCooldown *= 0.85 },
-    { id: 'regen', name: 'Bio-Link', desc: 'Regenerate 1 HP per second', effect: (p) => p.regen += 1 },
-    { id: 'black_hole', name: 'Singularity Shot', desc: 'Bullets pull enemies slightly', effect: (p) => p.hasSingularity = true },
-    { id: 'chronos', name: 'Chronos Field', desc: 'Active: Slow time for 3s (Press E)', effect: (p) => p.chronosCooldown *= 0.9 },
+    { id: 'fire_rate', name: 'Overclocked Cores', desc: 'Attack speed +15%', effect: (p) => p.fireRate *= 0.85, tier: 1 },
+    { id: 'damage', name: 'Plasma Surge', desc: 'Bullet damage +20%', effect: (p) => p.bulletDamage *= 1.2, tier: 1 },
+    { id: 'proj_count', name: 'Multi-Shot', desc: 'Add an additional projectile', effect: (p) => p.projCount += 1, tier: 1 },
+    { id: 'proj_spread', name: 'Wide Angle', desc: 'Increase projectile spread', effect: (p) => p.projSpread += 0.12, tier: 1 },
+    { id: 'speed', name: 'Warp Drive', desc: 'Movement speed +10%', effect: (p) => p.speed *= 1.1, tier: 1 },
+    { id: 'pierce', name: 'Phase Rounds', desc: 'Bullets pierce +1 enemy', effect: (p) => p.pierce += 1, tier: 1 },
+    { id: 'crit_chance', name: 'Precision Targeting', desc: 'Crit chance +5%', effect: (p) => p.critChance += 0.05, tier: 1 },
+    { id: 'crit_mult', name: 'High-Impact Slugs', desc: 'Crit multiplier +0.5x', effect: (p) => p.critMult += 0.5, tier: 1 },
+    { id: 'max_health', name: 'Nano-Armor', desc: 'Max health +20% & full heal', effect: (p) => { p.maxHealth *= 1.2; p.health = p.maxHealth; }, tier: 1 },
+    { id: 'orbitals', name: 'Sentry Drones', desc: 'Deploy an orbiting defense drone', effect: (p) => p.orbitals += 1, tier: 1 },
+    { id: 'dash_cd', name: 'Phase Shift', desc: 'Reduce dash cooldown by 15%', effect: (p) => p.dashCooldown *= 0.85, tier: 1 },
+    { id: 'regen', name: 'Bio-Link', desc: 'Regenerate 1 HP per second', effect: (p) => p.regen += 1, tier: 1 },
+    { id: 'black_hole', name: 'Singularity Shot', desc: 'Bullets pull enemies slightly', effect: (p) => p.hasSingularity = true, tier: 2 },
+    { id: 'chronos', name: 'Chronos Field', desc: 'Active: Slow time for 3s (Press E)', effect: (p) => p.chronosCooldown *= 0.9, tier: 2 },
+    { id: 'void_pulse', name: 'Void Pulse', desc: 'Active: Push enemies away (Press Q)', effect: (p) => p.pulseCooldown *= 0.9, tier: 2 },
 ];
 
 const META_UPGRADES = [

@@ -36,6 +36,7 @@ class Game {
         this.xpMultiplier = 1.0;
 
         this.nebulae = [];
+        this.stardust = [];
 
         this.init();
     }
@@ -132,6 +133,7 @@ class Game {
         this.canvas.width = this.width;
         this.canvas.height = this.height;
         this.generateNebulae();
+        this.generateStardust();
     }
 
     generateNebulae() {
@@ -144,6 +146,18 @@ class Game {
                 Math.random() * 300 + 200,
                 colors[Math.floor(Math.random() * colors.length)]
             ));
+        }
+    }
+
+    generateStardust() {
+        this.stardust = [];
+        for (let i = 0; i < 100; i++) {
+            this.stardust.push({
+                x: Math.random() * this.width,
+                y: Math.random() * this.height,
+                size: Math.random() * 2,
+                opacity: Math.random()
+            });
         }
     }
 
@@ -330,6 +344,17 @@ class Game {
         if (this.shake > 0) {
             this.ctx.translate((Math.random() - 0.5) * this.shake, (Math.random() - 0.5) * this.shake);
         }
+        
+        // Background Stardust
+        this.ctx.fillStyle = '#fff';
+        this.stardust.forEach(s => {
+            this.ctx.globalAlpha = s.opacity;
+            this.ctx.beginPath();
+            this.ctx.arc(s.x, s.y, s.size, 0, Math.PI * 2);
+            this.ctx.fill();
+        });
+        this.ctx.globalAlpha = 1.0;
+
         this.nebulae.forEach(n => n.draw(this.ctx));
         this.drawGrid();
         if (this.player) this.player.draw(this.ctx);
