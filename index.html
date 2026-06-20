@@ -24,7 +24,15 @@
             transition: opacity 0.1s;
         }
         #damage-flash.active { opacity: 1; }
+        body {
+            touch-action: none; /* Prevent Android pull-to-refresh and zoom */
+            overflow: hidden;
+        }
+        canvas {
+            touch-action: none;
+        }
     </style>
+
 </head>
 <body>
     <div id="game-container">
