@@ -1,8 +1,3 @@
-/**
- * Systems
- * Handles core game logic: collisions, spawning, upgrades, and synergies.
- */
-
 const Systems = {
     handleCollisions(game) {
         const entities = game.entities;
@@ -109,7 +104,7 @@ const Systems = {
 
     hitEnemy(bullet, enemy, game) {
         let damage = bullet.damage;
-        
+
         if (game.player.synergies.includes('HYPER_Scythe') && bullet.pierce > 1) {
             damage *= 1.3;
         }
@@ -152,7 +147,7 @@ const Systems = {
 };
 
 function playerGainXp(game, amount) {
-    return game.player.gainXp(amount);
+    return game.player.gainXp(amount * game.xpMultiplier);
 }
 
 const UPGRADES = [

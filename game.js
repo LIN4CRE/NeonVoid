@@ -1,36 +1,31 @@
-/**
- * Game
- * Main entry point and game loop.
- */
-
 class Game {
     constructor() {
         this.canvas = document.getElementById('gameCanvas');
         this.ctx = this.canvas.getContext('2d');
         this.width = 0;
         this.height = 0;
-        
+
         this.player = null;
         this.entities = [];
         this.input = { keys: {}, mouseX: 0, mouseY: 0, joystick: null };
-        
+
         this.score = 0;
         this.wave = 1;
         this.combo = 1;
         this.comboTimer = 0;
         this.comboMultiplier = 1;
-        
+
         this.paused = true;
         this.running = false;
         this.shake = 0;
-        
+
         this.spawnTimer = 0;
         this.asteroidTimer = 0;
         this.hazardTimer = 0;
         this.enemiesInWave = 0;
         this.waveMaxEnemies = 10;
         this.isBossWave = false;
-        
+
         this.metaCurrency = parseInt(localStorage.getItem('neon_void_currency')) || 0;
         this.metaProgress = JSON.parse(localStorage.getItem('neon_void_progress')) || {};
         this.xpMultiplier = 1.0;
@@ -47,11 +42,13 @@ class Game {
         window.addEventListener('keydown', (e) => this.input.keys[e.code] = true);
         window.addEventListener('keyup', (e) => this.input.keys[e.code] = false);
         window.addEventListener('mousemove', (e) => {
-            this.input.mouseX = e.clientX;
-            this.input.mouseY = e.clientY;
+            const rect = this.canvas.getBoundingClientRect();
+            this.input.mouseX = (e.clientX - rect.left) * (this.canvas.width / rect.width);
+            this.input.mouseY = (e.clientY - rect.top) * (this.canvas.height / rect.height);
         });
         window.addEventListener('keydown', (e) => {
             if (e.code === 'Escape') {
+                if (!this.running && this.paused) return;
                 this.paused = !this.paused;
                 if (this.paused) ui.showMenu('pause');
                 else ui.resumeGame();
@@ -60,6 +57,7 @@ class Game {
 
         this.initMobileControls();
         this.ui = new UIController(this);
+        window.game = this;
         requestAnimationFrame((t) => this.loop(t));
     }
 
@@ -121,6 +119,7 @@ class Game {
 
         pauseBtn.addEventListener('touchstart', (e) => {
             e.preventDefault();
+            if (!this.running && this.paused) return;
             this.paused = !this.paused;
             if (this.paused) this.ui.showMenu('pause');
             else this.ui.resumeGame();
@@ -128,17 +127,21 @@ class Game {
     }
 
     resize() {
+        const dpr = window.devicePixelRatio || 1;
         this.width = window.innerWidth;
         this.height = window.innerHeight;
-        this.canvas.width = this.width;
-        this.canvas.height = this.height;
+        this.canvas.width = this.width * dpr;
+        this.canvas.height = this.height * dpr;
+        this.canvas.style.width = `${this.width}px`;
+        this.canvas.style.height = `${this.height}px`;
+        this.ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
         this.generateNebulae();
         this.generateStardust();
     }
 
     generateNebulae() {
         this.nebulae = [];
-        const colors = ['rgba(0, 242, 255, 0.1)', 'rgba(255, 0, 204, 0.1)', 'rgba(57, 255, 20, 0.1)', 'rgba(255, 255, 0, 0.1)'];
+        const colors = ['rgba(0, 242, 255, 0.15)', 'rgba(255, 0, 204, 0.15)', 'rgba(57, 255, 20, 0.12)', 'rgba(255, 255, 0, 0.12)'];
         for (let i = 0; i < 8; i++) {
             this.nebulae.push(new Nebula(
                 Math.random() * this.width,
@@ -155,8 +158,8 @@ class Game {
             this.stardust.push({
                 x: Math.random() * this.width,
                 y: Math.random() * this.height,
-                size: Math.random() * 2,
-                opacity: Math.random()
+                size: Math.random() * 2 + 0.5,
+                opacity: Math.random() * 0.8 + 0.2
             });
         }
     }
@@ -261,13 +264,13 @@ class Game {
     spawnBoss() {
         const names = ['VOID REAPER', 'NEON TITAN', 'CYBER CORE', 'THE SINGULARITY', 'AETHER LORD'];
         const name = names[Math.floor(this.wave / 10) % names.length];
-        
+
         if (this.wave >= 30) {
             this.entities.push(new SingularityCore(this.width / 2, -100, this.wave));
         } else {
             this.entities.push(new Boss(this.width / 2, -100, this.wave, name));
         }
-        
+
         this.ui.notify(`WARNING: ${name} DETECTED`, '#ff00ff');
         audio.setMusicState('boss');
     }
@@ -284,7 +287,7 @@ class Game {
         }
 
         this.player.update(dt, this.input, this);
-        
+
         const currentOrbitals = this.entities.filter(e => e instanceof Orbital).length;
         if (currentOrbitals < this.player.orbitals) {
             for (let i = 0; i < this.player.orbitals - currentOrbitals; i++) {
@@ -344,8 +347,7 @@ class Game {
         if (this.shake > 0) {
             this.ctx.translate((Math.random() - 0.5) * this.shake, (Math.random() - 0.5) * this.shake);
         }
-        
-        // Background Stardust
+
         this.ctx.fillStyle = '#fff';
         this.stardust.forEach(s => {
             this.ctx.globalAlpha = s.opacity;

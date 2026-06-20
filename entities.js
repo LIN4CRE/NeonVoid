@@ -1,8 +1,3 @@
-/**
- * Entities
- * Defines all game objects: Player, Enemies, Bullets, Particles, Orbitals, DamageNumbers, Asteroids, PowerUps, Hazards.
- */
-
 class Entity {
     constructor(x, y, radius, color) {
         this.x = x;
@@ -32,7 +27,7 @@ class Player extends Entity {
         this.level = 1;
         this.xp = 0;
         this.xpNextLevel = 100;
-        
+
         this.fireRate = 0.3;
         this.fireTimer = 0;
         this.bulletDamage = 10;
@@ -46,7 +41,7 @@ class Player extends Entity {
         this.orbitals = 0;
         this.orbitalDamage = 15;
         this.orbitalRadius = 100;
-        
+
         this.dashCooldown = 2.0;
         this.dashTimer = 0;
         this.dashDuration = 0.15;
@@ -70,6 +65,8 @@ class Player extends Entity {
 
         this.pickedUpgrades = [];
         this.synergies = [];
+
+        this.damageFlash = 0;
     }
 
     update(dt, input, game) {
@@ -81,6 +78,7 @@ class Player extends Entity {
 
         if (this.tempOverdrive > 0) this.tempOverdrive -= dt;
         if (this.tempShield > 0) this.tempShield -= dt;
+        if (this.damageFlash > 0) this.damageFlash -= dt;
 
         this.dashTimer -= dt;
         if (this.dashActive > 0) {
@@ -127,11 +125,10 @@ class Player extends Entity {
             this.pulseTimer = this.pulseCooldown;
             audio.playExplosion('small');
             game.ui.notify('VOID PULSE!', '#ff00ff');
-            
-            // Apply damage to nearby enemies
+
             const enemies = game.entities.filter(e => e instanceof Enemy);
             enemies.forEach(e => {
-                const dist = Math.sqrt((e.x - this.x)**2 + (e.y - this.y)**2);
+                const dist = Math.sqrt((e.x - this.x) ** 2 + (e.y - this.y) ** 2);
                 if (dist < 200) {
                     e.takeDamage(this.bulletDamage * 3);
                     const angle = Math.atan2(e.y - this.y, e.x - this.x);
@@ -174,9 +171,10 @@ class Player extends Entity {
     draw(ctx) {
         ctx.save();
         ctx.translate(this.x, this.y);
-        const angle = Math.atan2(game.input.mouseY - this.y, game.input.mouseX - this.x);
+        const g = window.game || { input: { mouseX: this.x + 50, mouseY: this.y } };
+        const angle = Math.atan2(g.input.mouseY - this.y, g.input.mouseX - this.x);
         ctx.rotate(angle);
-        
+
         if (this.tempShield > 0) {
             ctx.beginPath();
             ctx.arc(0, 0, this.radius * 2, 0, Math.PI * 2);
@@ -195,7 +193,7 @@ class Player extends Entity {
 
         if (this.pulseActive > 0) {
             ctx.beginPath();
-            ctx.arc(0, 0, (1 - this.pulseActive/this.pulseDuration) * 200, 0, Math.PI * 2);
+            ctx.arc(0, 0, (1 - this.pulseActive / this.pulseDuration) * 200, 0, Math.PI * 2);
             ctx.strokeStyle = '#ff00ff';
             ctx.lineWidth = 4;
             ctx.stroke();
@@ -203,8 +201,7 @@ class Player extends Entity {
 
         ctx.shadowBlur = this.isDashing ? 30 : 15;
         ctx.shadowColor = this.color;
-        
-        // Detailed Ship Geometry
+
         ctx.beginPath();
         ctx.moveTo(this.radius * 1.8, 0);
         ctx.lineTo(-this.radius, -this.radius);
@@ -212,13 +209,21 @@ class Player extends Entity {
         ctx.lineTo(-this.radius * 0.5, this.radius * 0.3);
         ctx.lineTo(-this.radius, this.radius);
         ctx.closePath();
-        ctx.fillStyle = this.tempOverdrive > 0 ? '#ff00ff' : this.color;
+
+        if (this.damageFlash > 0) {
+            ctx.fillStyle = '#fff';
+        } else if (this.tempOverdrive > 0) {
+            ctx.fillStyle = '#ff00ff';
+        } else {
+            ctx.fillStyle = this.color;
+        }
         ctx.fill();
-        
+
         ctx.restore();
     }
 
     takeDamage(amount) {
+        this.damageFlash = 0.1;
         if (this.tempShield > 0) {
             this.tempShield -= amount * 0.5;
             return false;
@@ -305,7 +310,7 @@ class Enemy extends Entity {
             siphoner: { radius: 15, color: '#00ffaa', health: 40, speed: 100, damage: 5, xp: 30, score: 40, shield: 0 },
             shifter: { radius: 15, color: '#aa00ff', health: 40, speed: 120, damage: 15, xp: 30, score: 40, shield: 0 }
         };
-        
+
         const config = configs[type];
         super(x, y, config.radius, config.color);
         this.type = type;
@@ -328,7 +333,7 @@ class Enemy extends Entity {
         const dx = game.player.x - this.x;
         const dy = game.player.y - this.y;
         const dist = Math.sqrt(dx * dx + dy * dy);
-        
+
         this.rotation += dt * 2;
 
         if (this.type === 'vortex') {
@@ -392,7 +397,7 @@ class Enemy extends Entity {
         ctx.rotate(this.rotation);
         ctx.shadowBlur = 10;
         ctx.shadowColor = this.color;
-        
+
         if (this.shield > 0) {
             ctx.beginPath();
             ctx.arc(0, 0, this.radius + 5, 0, Math.PI * 2);
@@ -400,7 +405,7 @@ class Enemy extends Entity {
             ctx.lineWidth = 2;
             ctx.stroke();
         }
-        
+
         ctx.beginPath();
         if (this.type === 'tank' || this.type === 'hive') {
             ctx.rect(-this.radius, -this.radius, this.radius * 2, this.radius * 2);
@@ -436,28 +441,6 @@ class Boss extends Enemy {
         this.attackCooldown = 0;
     }
 
-    update(dt, game) {
-        const timeScale = game.player.chronosActive > 0 ? 0.3 : 1.0;
-        const dx = game.player.x - this.x;
-        const dy = game.player.y - this.y;
-        const dist = Math.sqrt(dx * dx + dy * dy);
-        
-        this.x += (dx / dist) * this.speed * dt * timeScale;
-        this.y += (dy / dist) * this.speed * dt * timeScale;
-        
-        this.phaseTimer += dt * timeScale;
-        this.attackCooldown -= dt * timeScale;
-        if (this.phaseTimer > 6) {
-            this.phase = (this.phase + 1) % 4;
-            this.phaseTimer = 0;
-        }
-        
-        if (this.attackCooldown <= 0) {
-            this.executePhaseAttack(game, dx, dy, dist);
-            this.attackCooldown = this.getAttackCooldown();
-        }
-    }
-
     getAttackCooldown() {
         const cooldowns = [1.5, 1.0, 0.8, 2.0];
         return cooldowns[this.phase];
@@ -465,25 +448,47 @@ class Boss extends Enemy {
 
     executePhaseAttack(game, dx, dy, dist) {
         const angle = Math.atan2(dy, dx);
-        if (this.phase === 0) { // Nova Burst
+        if (this.phase === 0) {
             for (let i = 0; i < 24; i++) {
                 const a = (i / 24) * Math.PI * 2;
                 game.entities.push(new Bullet(this.x, this.y, a, 200, 15, 6, this.color, 1, false));
             }
             game.shake = 10;
-        } else if (this.phase === 1) { // Sniper Stream
+        } else if (this.phase === 1) {
             for (let i = -2; i <= 2; i++) {
                 game.entities.push(new Bullet(this.x, this.y, angle + i * 0.1, 500, 10, 4, this.color, 1, false));
             }
-        } else if (this.phase === 2) { // Chaos Rain
+        } else if (this.phase === 2) {
             for (let i = 0; i < 10; i++) {
                 const a = Math.random() * Math.PI * 2;
                 game.entities.push(new Bullet(this.x, this.y, a, 300, 12, 5, this.color, 1, false));
             }
-        } else { // Vortex Pull
+        } else {
             game.player.x += (dx / dist) * 50;
             game.player.y += (dy / dist) * 50;
             game.createExplosion(this.x, this.y, this.color);
+        }
+    }
+
+    update(dt, game) {
+        const timeScale = game.player.chronosActive > 0 ? 0.3 : 1.0;
+        const dx = game.player.x - this.x;
+        const dy = game.player.y - this.y;
+        const dist = Math.sqrt(dx * dx + dy * dy);
+
+        this.x += (dx / dist) * this.speed * dt * timeScale;
+        this.y += (dy / dist) * this.speed * dt * timeScale;
+
+        this.phaseTimer += dt * timeScale;
+        this.attackCooldown -= dt * timeScale;
+        if (this.phaseTimer > 6) {
+            this.phase = (this.phase + 1) % 4;
+            this.phaseTimer = 0;
+        }
+
+        if (this.attackCooldown <= 0) {
+            this.executePhaseAttack(game, dx, dy, dist);
+            this.attackCooldown = this.getAttackCooldown();
         }
     }
 
@@ -526,12 +531,12 @@ class SingularityCore extends Boss {
 
     executePhaseAttack(game, dx, dy, dist) {
         const angle = Math.atan2(dy, dx);
-        if (this.phase === 0) { // Event Horizon: Pulls all enemies and player in
+        if (this.phase === 0) {
             game.ui.notify('EVENT HORIZON ACTIVE', '#ff00ff');
             for (let i = 0; i < 2; i++) {
                 game.entities.push(new BlackHole(this.x, this.y, 60));
             }
-        } else if (this.phase === 1) { // Repulsor Wave: Pushes everything away
+        } else if (this.phase === 1) {
             game.ui.notify('REPULSOR WAVE', '#00f2ff');
             const entities = game.entities.filter(e => e instanceof Enemy || e instanceof Player);
             for (const e of entities) {
@@ -544,12 +549,12 @@ class SingularityCore extends Boss {
                 }
             }
             game.shake = 20;
-        } else if (this.phase === 2) { // Singularity Beams: 4 beams of energy
+        } else if (this.phase === 2) {
             for (let i = 0; i < 4; i++) {
                 const a = (i / 4) * Math.PI * 2;
                 game.entities.push(new Bullet(this.x, this.y, a, 400, 20, 10, this.shieldColor, 1, false));
             }
-        } else { // Void Collapse: Small black holes everywhere
+        } else {
             for (let i = 0; i < 5; i++) {
                 game.entities.push(new BlackHole(this.x + (Math.random() - 0.5) * 400, this.y + (Math.random() - 0.5) * 400, 30));
             }

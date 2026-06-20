@@ -1,21 +1,31 @@
-/**
- * UIController
- * Manages all DOM elements, menus, HUD updates, and notifications.
- */
-
 class UIController {
     constructor(game) {
         this.game = game;
-        
+
         this.hud = {
             score: document.getElementById('score-value'),
             level: document.getElementById('level-value'),
             wave: document.getElementById('wave-value'),
             xpFill: document.getElementById('xp-bar-fill'),
             healthFill: document.getElementById('health-bar-fill'),
+            healthText: document.getElementById('health-text'),
             comboMult: document.getElementById('combo-multiplier'),
             comboCont: document.getElementById('combo-container')
         };
+
+        this.bossHud = {
+            container: document.getElementById('boss-hud'),
+            name: document.getElementById('boss-name'),
+            fill: document.getElementById('boss-bar-fill')
+        };
+
+        this.abilityIcons = {
+            dash: document.getElementById('dash-cd'),
+            chronos: document.getElementById('chronos-cd'),
+            pulse: document.getElementById('pulse-cd')
+        };
+
+        this.damageFlash = document.getElementById('damage-flash');
 
         this.menus = {
             main: document.getElementById('main-menu'),
@@ -116,12 +126,54 @@ class UIController {
         this.hud.level.innerText = p.level;
         this.hud.wave.innerText = this.game.wave;
         this.hud.xpFill.style.width = `${(p.xp / p.xpNextLevel) * 100}%`;
-        this.hud.healthFill.style.width = `${(p.health / p.maxHealth) * 100}%`;
+        const healthPct = Math.max(0, (p.health / p.maxHealth) * 100);
+        this.hud.healthFill.style.width = `${healthPct}%`;
+        this.hud.healthText.innerText = `${Math.ceil(p.health)} / ${p.maxHealth}`;
+
         if (this.game.combo > 1) {
             this.hud.comboCont.classList.remove('hidden');
             this.hud.comboMult.innerText = `x${this.game.combo}`;
         } else {
             this.hud.comboCont.classList.add('hidden');
+        }
+
+        this.updateAbilityCooldowns(p);
+        this.updateBossHUD();
+        this.updateDamageFlash(p);
+    }
+
+    updateAbilityCooldowns(p) {
+        const dashPct = p.dashTimer > 0 ? (p.dashTimer / p.dashCooldown) * 100 : 0;
+        const chronosPct = p.chronosTimer > 0 ? (p.chronosTimer / p.chronosCooldown) * 100 : 0;
+        const pulsePct = p.pulseTimer > 0 ? (p.pulseTimer / p.pulseCooldown) * 100 : 0;
+
+        this.abilityIcons.dash.classList.toggle('on-cooldown', dashPct > 0);
+        this.abilityIcons.chronos.classList.toggle('on-cooldown', chronosPct > 0);
+        this.abilityIcons.pulse.classList.toggle('on-cooldown', pulsePct > 0);
+
+        this.abilityIcons.dash.style.setProperty('--cd-pct', `${dashPct}%`);
+        this.abilityIcons.chronos.style.setProperty('--cd-pct', `${chronosPct}%`);
+        this.abilityIcons.pulse.style.setProperty('--cd-pct', `${pulsePct}%`);
+    }
+
+    updateBossHUD() {
+        const boss = this.game.entities.find(e => e instanceof Boss);
+        if (boss && !boss.markedForDeletion) {
+            this.bossHud.container.classList.remove('hidden');
+            this.bossHud.name.innerText = boss.name || 'BOSS';
+            const pct = Math.max(0, (boss.health / boss.maxHealth) * 100);
+            this.bossHud.fill.style.width = `${pct}%`;
+        } else {
+            this.bossHud.container.classList.add('hidden');
+        }
+    }
+
+    updateDamageFlash(p) {
+        if (p.damageFlash > 0) {
+            this.damageFlash.classList.add('active');
+            this.damageFlash.style.background = `rgba(255, 0, 0, ${p.damageFlash * 3})`;
+        } else {
+            this.damageFlash.classList.remove('active');
         }
     }
 
@@ -138,10 +190,7 @@ class UIController {
             card.onclick = () => {
                 this.game.player.pickedUpgrades.push(upg.id);
                 upg.effect(this.game.player);
-                
-                // v2.0 Synergy Check
                 this.checkSynergies();
-                
                 this.resumeGame();
             };
             optionsCont.appendChild(card);
@@ -152,7 +201,6 @@ class UIController {
         const p = this.game.player;
         const upgrades = p.pickedUpgrades;
 
-        // Hyper Vortex: Multi-Shot + Singularity
         if (upgrades.includes('proj_count') && upgrades.includes('black_hole')) {
             if (!p.synergies.includes('HYPER_VORTEX')) {
                 p.synergies.push('HYPER_VORTEX');
@@ -160,7 +208,6 @@ class UIController {
             }
         }
 
-        // Hyper Scythe: Pierce + Spread
         if (upgrades.includes('pierce') && upgrades.includes('proj_spread')) {
             if (!p.synergies.includes('HYPER_Scythe')) {
                 p.synergies.push('HYPER_Scythe');
@@ -168,7 +215,6 @@ class UIController {
             }
         }
 
-        // Hyper Sustain: Nano-Armor + Bio-Link
         if (upgrades.includes('max_health') && upgrades.includes('regen')) {
             if (!p.synergies.includes('HYPER_Sustain')) {
                 p.synergies.push('HYPER_Sustain');
@@ -177,12 +223,14 @@ class UIController {
         }
     }
 
-
     showGameOver() {
         this.showMenu('gameOver');
         document.getElementById('final-score').innerText = Math.floor(this.game.score);
         document.getElementById('final-waves').innerText = this.game.wave;
         document.getElementById('final-level').innerText = this.game.player.level;
+        const scraps = document.getElementById('scraps-earned');
+        const earned = Math.floor(this.game.score / 50);
+        scraps.innerHTML = `DATA SCRAPS EARNED: <span style="color:#39ff14">+${earned}</span>`;
     }
 
     renderMetaUpgrades() {
@@ -200,13 +248,15 @@ class UIController {
                 <p>${upg.desc}</p>
                 <div class="meta-cost">COST: ${cost} DATA</div>
                 <div class="meta-lvl">LVL: ${level}/${upg.maxLvl}</div>
-                <button class="meta-btn" ${ (this.game.metaCurrency < cost || level >= upg.maxLvl) ? 'disabled' : '' }>UPGRADE</button>
+                <button class="meta-btn" ${(this.game.metaCurrency < cost || level >= upg.maxLvl) ? 'disabled' : ''}>UPGRADE</button>
             `;
             card.querySelector('.meta-btn').onclick = () => {
                 if (this.game.metaCurrency >= cost && level < upg.maxLvl) {
                     this.game.metaCurrency -= cost;
                     this.game.metaProgress[upg.id] = level + 1;
                     upg.effect(this.game);
+                    localStorage.setItem('neon_void_currency', this.game.metaCurrency);
+                    localStorage.setItem('neon_void_progress', JSON.stringify(this.game.metaProgress));
                     this.renderMetaUpgrades();
                 }
             };
