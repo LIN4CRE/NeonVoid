@@ -1,5 +1,7 @@
 # NEON VOID | Galactic Survival v2.0
 
+![Banner](banner.png)
+
 ![Version](https://img.shields.io/badge/version-2.0.0-blueviolet)
 ![Platform](https://img.shields.io/badge/platform-Browser-lightgrey)
 ![License](https://img.shields.io/badge/license-MIT-green)
