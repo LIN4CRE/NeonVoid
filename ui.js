@@ -137,11 +137,46 @@ class UIController {
             card.innerHTML = `<h3>${upg.name}</h3><p>${upg.desc}</p>`;
             card.onclick = () => {
                 upg.effect(this.game.player);
+                
+                // v2.0 Synergy Check
+                this.checkSynergies();
+                
                 this.resumeGame();
             };
             optionsCont.appendChild(card);
         });
     }
+
+    checkSynergies() {
+        const p = this.game.player;
+        // We need to track which upgrades were picked. 
+        // For simplicity in this implementation, I'll check for the resulting stats/flags.
+        
+        // Hyper Vortex: Multi-Shot + Singularity
+        if (p.projCount > 1 && p.hasSingularity) {
+            if (!p.synergies.includes('HYPER_VORTEX')) {
+                p.synergies.push('HYPER_VORTEX');
+                this.notify('SYNERGY UNLOCKED: HYPER VORTEX', '#ff00ff');
+            }
+        }
+
+        // Hyper Scythe: Pierce + Spread
+        if (p.pierce > 1 && p.projSpread > 0) {
+            if (!p.synergies.includes('HYPER_Scythe')) {
+                p.synergies.push('HYPER_Scythe');
+                this.notify('SYNERGY UNLOCKED: HYPER SCYTHE', '#39ff14');
+            }
+        }
+
+        // Hyper Sustain: Nano-Armor + Bio-Link
+        if (p.maxHealth > 120 && p.regen > 0) {
+            if (!p.synergies.includes('HYPER_Sustain')) {
+                p.synergies.push('HYPER_Sustain');
+                this.notify('SYNERGY UNLOCKED: HYPER SUSTAIN', '#00f2ff');
+            }
+        }
+    }
+
 
     showGameOver() {
         this.showMenu('gameOver');

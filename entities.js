@@ -55,20 +55,23 @@ class Player extends Entity {
         this.regen = 0;
         this.hasSingularity = false;
 
-        // Temp Power-ups
         this.tempOverdrive = 0;
         this.tempShield = 0;
 
-        // v2.0 Systems: Active Abilities
         this.chronosCooldown = 10.0;
         this.chronosTimer = 0;
         this.chronosActive = 0;
         this.chronosDuration = 3.0;
+
+        // v2.0 Synergies
+        this.synergies = [];
     }
 
     update(dt, input, game) {
         if (this.health < this.maxHealth) {
-            this.health = Math.min(this.maxHealth, this.health + this.regen * dt);
+            let currentRegen = this.regen;
+            if (this.synergies.includes('HYPER_Sustain')) currentRegen *= 2;
+            this.health = Math.min(this.maxHealth, this.health + currentRegen * dt);
         }
 
         if (this.tempOverdrive > 0) this.tempOverdrive -= dt;
@@ -94,7 +97,6 @@ class Player extends Entity {
         if (input.keys['KeyD'] || input.keys['ArrowRight']) dx += 1;
         if (input.joystick) { dx = input.joystick.x; dy = input.joystick.y; }
 
-        // Dash
         if ((input.keys['Space'] || input.keys['ShiftLeft']) && this.dashTimer <= 0) {
             this.dashActive = this.dashDuration;
             this.dashTimer = this.dashCooldown;
@@ -102,7 +104,6 @@ class Player extends Entity {
             game.createExplosion(this.x, this.y, this.color);
         }
 
-        // Chronos Field (Active Ability) - Triggered by 'E'
         if (input.keys['KeyE'] && this.chronosTimer <= 0) {
             this.chronosActive = this.chronosDuration;
             this.chronosTimer = this.chronosCooldown;
@@ -134,7 +135,11 @@ class Player extends Entity {
         for (let i = 0; i < this.projCount; i++) {
             const spread = this.projSpread * (i - (this.projCount - 1) / 2);
             const finalAngle = angle + spread;
-            game.entities.push(new Bullet(this.x, this.y, finalAngle, this.bulletSpeed, this.bulletDamage, this.bulletRadius, this.color, this.pierce, true, this.hasSingularity));
+            
+            // Synergy: Hyper Vortex
+            const singularityEffect = this.hasSingularity || this.synergies.includes('HYPER_VORTEX');
+            
+            game.entities.push(new Bullet(this.x, this.y, finalAngle, this.bulletSpeed, this.bulletDamage, this.bulletRadius, this.color, this.pierce, true, singularityEffect));
         }
         audio.playLaser(this.tempOverdrive > 0 ? 'heavy' : 'standard');
     }
@@ -312,7 +317,6 @@ class Enemy extends Entity {
 
         if (this.type === 'siphoner') {
             if (dist < 100) {
-                // Siphoner steals health
                 game.player.takeDamage(5 * dt);
                 this.health = Math.min(this.maxHealth, this.health + 10 * dt);
             }
@@ -456,6 +460,73 @@ class Boss extends Enemy {
         ctx.arc(this.x, this.y, this.radius * 0.6, 0, Math.PI * 2);
         ctx.fillStyle = this.color;
         ctx.fill();
+        ctx.restore();
+    }
+}
+
+class SingularityCore extends Boss {
+    constructor(x, y, wave) {
+        super(x, y, wave, 'SINGULARITY CORE');
+        this.radius = 80;
+        this.color = '#000';
+        this.shieldColor = '#ff00ff';
+        this.health = 2000 + (wave * 500);
+        this.maxHealth = this.health;
+        this.speed = 30;
+        this.phase = 0;
+        this.pullIntensity = 100;
+    }
+
+    executePhaseAttack(game, dx, dy, dist) {
+        const angle = Math.atan2(dy, dx);
+        if (this.phase === 0) { // Event Horizon: Pulls all enemies and player in
+            game.ui.notify('EVENT HORIZON ACTIVE', '#ff00ff');
+            for (let i = 0; i < 2; i++) {
+                game.entities.push(new BlackHole(this.x, this.y, 60));
+            }
+        } else if (this.phase === 1) { // Repulsor Wave: Pushes everything away
+            game.ui.notify('REPULSOR WAVE', '#00f2ff');
+            const entities = game.entities.filter(e => e instanceof Enemy || e instanceof Player);
+            for (const e of entities) {
+                const edx = e.x - this.x;
+                const edy = e.y - this.y;
+                const edist = Math.sqrt(edx * edx + edy * edy);
+                if (edist < 400) {
+                    e.x += (edx / edist) * 200;
+                    e.y += (edy / edist) * 200;
+                }
+            }
+            game.shake = 20;
+        } else if (this.phase === 2) { // Singularity Beams: 4 beams of energy
+            for (let i = 0; i < 4; i++) {
+                const a = (i / 4) * Math.PI * 2;
+                game.entities.push(new Bullet(this.x, this.y, a, 400, 20, 10, this.shieldColor, 1, false));
+            }
+        } else { // Void Collapse: Small black holes everywhere
+            for (let i = 0; i < 5; i++) {
+                game.entities.push(new BlackHole(this.x + (Math.random() - 0.5) * 400, this.y + (Math.random() - 0.5) * 400, 30));
+            }
+        }
+    }
+
+    draw(ctx) {
+        ctx.save();
+        ctx.shadowBlur = 40;
+        ctx.shadowColor = this.shieldColor;
+        if (this.shield > 0) {
+            ctx.beginPath();
+            ctx.arc(this.x, this.y, this.radius + 25, 0, Math.PI * 2);
+            ctx.strokeStyle = this.shieldColor;
+            ctx.lineWidth = 5;
+            ctx.stroke();
+        }
+        ctx.beginPath();
+        ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
+        ctx.fillStyle = '#000';
+        ctx.fill();
+        ctx.strokeStyle = this.shieldColor;
+        ctx.lineWidth = 4;
+        ctx.stroke();
         ctx.restore();
     }
 }
@@ -657,7 +728,6 @@ class BlackHole extends Entity {
         this.life -= dt;
         if (this.life <= 0) this.markedForDeletion = true;
 
-        // Pull everything
         const entities = game.entities.filter(e => e instanceof Enemy || e instanceof Player || e instanceof Asteroid);
         for (const e of entities) {
             const dx = this.x - e.x;

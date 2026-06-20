@@ -247,7 +247,13 @@ class Game {
     spawnBoss() {
         const names = ['VOID REAPER', 'NEON TITAN', 'CYBER CORE', 'THE SINGULARITY', 'AETHER LORD'];
         const name = names[Math.floor(this.wave / 10) % names.length];
-        this.entities.push(new Boss(this.width / 2, -100, this.wave, name));
+        
+        if (this.wave >= 30) {
+            this.entities.push(new SingularityCore(this.width / 2, -100, this.wave));
+        } else {
+            this.entities.push(new Boss(this.width / 2, -100, this.wave, name));
+        }
+        
         this.ui.notify(`WARNING: ${name} DETECTED`, '#ff00ff');
         audio.setMusicState('boss');
     }

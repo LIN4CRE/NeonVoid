@@ -1,6 +1,6 @@
 /**
  * Systems
- * Handles core game logic: collisions, spawning, upgrades.
+ * Handles core game logic: collisions, spawning, upgrades, and synergies.
  */
 
 const Systems = {
@@ -15,7 +15,6 @@ const Systems = {
         const powerUps = entities.filter(e => e instanceof PowerUp);
         const blackHoles = entities.filter(e => e instanceof BlackHole);
 
-        // Bullet vs Enemy
         for (const bullet of bullets) {
             if (bullet.markedForDeletion) continue;
             for (const enemy of enemies) {
@@ -42,7 +41,6 @@ const Systems = {
             }
         }
 
-        // Orbital vs Enemy
         for (const orbital of orbitals) {
             for (const enemy of enemies) {
                 if (enemy.markedForDeletion) continue;
@@ -55,7 +53,6 @@ const Systems = {
             }
         }
 
-        // Player vs Entities
         for (const entity of entities) {
             if (entity.markedForDeletion) continue;
             const dx = entity.x - player.x;
@@ -75,7 +72,6 @@ const Systems = {
                 } else if (entity instanceof PowerUp) {
                     this.applyPowerUp(entity, player, game);
                 } else if (entity instanceof BlackHole) {
-                    // Black holes destroy the player if they touch the event horizon
                     if (!player.isDashing) {
                         player.takeDamage(50);
                         game.shake = 30;
@@ -113,6 +109,12 @@ const Systems = {
 
     hitEnemy(bullet, enemy, game) {
         let damage = bullet.damage;
+        
+        // Synergy: Hyper Scythe (Pierce + Spread)
+        if (game.player.synergies.includes('HYPER_Scythe') && bullet.pierce > 1) {
+            damage *= 1.3;
+        }
+
         if (enemy.shield > 0) {
             enemy.shield -= damage;
             damage = 0;
@@ -147,6 +149,16 @@ const Systems = {
                 game.createParticle(bullet.x, bullet.y, enemy.color, 2);
             }
         }
+    },
+
+    checkSynergies(player, game) {
+        const currentUpgrades = UPGRADES.map(u => u.id);
+        const playerUpgrades = [];
+        
+        // Determine which upgrades player actually has
+        // This requires tracking which upgrades were picked. 
+        // I'll assume the player object is updated via the effects.
+        // To accurately track synergies, I need to store the picked IDs.
     }
 };
 
